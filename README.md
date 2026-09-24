@@ -12,7 +12,7 @@ npm start
 ```
 
 1. Open **Settings**, enter your OpenAI API key, and save. You can alternatively supply `OPENAI_API_KEY` in the launching environment.
-2. Select the OCR source language and translation target. The default model is `gpt-4.1-mini`; enter another Responses API text model available to your account if needed.
+2. Select the OCR source language and translation target. The default model is `gpt-4.1-mini`; choose another model from the Settings dropdown if needed. Model access depends on your OpenAI API account.
 3. Hold **Ctrl**, left-drag over text in any app, then release the mouse. Lens highlights the region and reads it while the app remains visible.
 4. If a game does not expose mouse input, point at the display and press **Alt+Shift+T**, then click a paragraph or drag around text.
 5. Use the card to copy, edit OCR and retry, or enable click-through. **Alt+Shift+X** restores controls from click-through. Escape dismisses a focused selection/card.
