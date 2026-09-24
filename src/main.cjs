@@ -17,7 +17,7 @@ else {
   app.whenReady().then(start).catch(error=>{console.error(error);app.exit(1);});
 }
 function makeWindow(view,options={}) {
-  const win=new BrowserWindow({width:1080,height:760,minWidth:820,minHeight:620,show:false,backgroundColor:'#10131a',autoHideMenuBar:true,title:'Lens Translate',...options,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  const win=new BrowserWindow({width:1080,height:760,minWidth:820,minHeight:620,show:false,backgroundColor:'#212121',autoHideMenuBar:true,title:'Lens Translate',...options,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('will-navigate',event=>event.preventDefault());
   win.loadFile(path.join(__dirname,'ui/index.html'),{query:{view}});
@@ -31,20 +31,7 @@ function bindShortcut(key){return globalShortcut.register(key,()=>capture().catc
 function showError(error){hideDragIndicator();update({status:'error',error:error.message||String(error)});if(overlay&&!overlay.isDestroyed())overlay.showInactive();send(main,{type:'error',error:error.message});}
 async function start(){
   store=new Store(app.getPath('userData'),safeStorage); translator=new Translator(store);
-  main=makeWindow('main');
-  main.once('ready-to-show',()=>{if(!smoke)main.show();});
-  main.on('close',event=>{if(!quitting){event.preventDefault();main.hide();}});
-  overlay=makeWindow('result',{width:360,height:150,minWidth:160,minHeight:50,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:true,skipTaskbar:true,resizable:true});
-  overlay.setAlwaysOnTop(true,'screen-saver');
-  overlay.on('close',event=>{if(!quitting){event.preventDefault();dismiss();}});
-  dragIndicator=makeWindow('drag',{width:1,height:1,minWidth:1,minHeight:1,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:true,skipTaskbar:true,resizable:false,focusable:false});
-  dragIndicator.setAlwaysOnTop(true,'screen-saver');dragIndicator.setIgnoreMouseEvents(true);
-  const svg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="8" fill="#b4f078"/><text x="6" y="25" font-family="Arial" font-weight="bold" font-size="26" fill="#10131a">L</text></svg>');
-  const icon=nativeImage.createFromBuffer(await sharp(svg).png().toBuffer());
-  main.setIcon(icon);tray=new Tray(icon);tray.setToolTip('Lens Translate');
-  tray.setContextMenu(Menu.buildFromTemplate([{label:'Translate screen',click:()=>capture().catch(showError)},{label:'Settings & history',click:()=>main.show()},{type:'separator'},{label:'Quit Lens',click:()=>app.quit()}]));tray.on('double-click',()=>main.show());
-  if(!bindShortcut(store.settings.hotkey))main.webContents.once('did-finish-load',()=>send(main,{type:'error',error:'Shortcut unavailable. Choose another shortcut in Settings.'}));
-  startDragListener();
+  // Register IPC before loading renderers or awaiting tray icon generation.
   const allow={state:['main','result','select','drag'],save:['main'],capture:['main','result'],select:['select'],dismiss:['result','select'],clear:['main'],copy:['main','result'],retry:['result'],settings:['result'],passthrough:['result'],expand:['result']};
   const handlers={
     state:()=>({settings:store.settings,hasKey:!!store.key(),history:store.history,languages:LANGUAGES,capture:captureState,result:resultState}),
@@ -69,6 +56,20 @@ async function start(){
     if(!role||!allow[channel].includes(role)||event.senderFrame!==event.sender.mainFrame)throw new Error('Unauthorized request.');
     return handler(event,...args);
   });
+  main=makeWindow('main');
+  main.once('ready-to-show',()=>{if(!smoke)main.show();});
+  main.on('close',event=>{if(!quitting){event.preventDefault();main.hide();}});
+  overlay=makeWindow('result',{width:360,height:150,minWidth:160,minHeight:50,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:true,skipTaskbar:true,resizable:true});
+  overlay.setAlwaysOnTop(true,'screen-saver');
+  overlay.on('close',event=>{if(!quitting){event.preventDefault();dismiss();}});
+  dragIndicator=makeWindow('drag',{width:1,height:1,minWidth:1,minHeight:1,frame:false,transparent:true,backgroundColor:'#00000000',alwaysOnTop:true,skipTaskbar:true,resizable:false,focusable:false});
+  dragIndicator.setAlwaysOnTop(true,'screen-saver');dragIndicator.setIgnoreMouseEvents(true);
+  const svg=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="8" fill="#b4f078"/><text x="6" y="25" font-family="Arial" font-weight="bold" font-size="26" fill="#10131a">L</text></svg>');
+  const icon=nativeImage.createFromBuffer(await sharp(svg).png().toBuffer());
+  main.setIcon(icon);tray=new Tray(icon);tray.setToolTip('Lens Translate');
+  tray.setContextMenu(Menu.buildFromTemplate([{label:'Translate screen',click:()=>capture().catch(showError)},{label:'Settings & history',click:()=>main.show()},{type:'separator'},{label:'Quit Lens',click:()=>app.quit()}]));tray.on('double-click',()=>main.show());
+  if(!bindShortcut(store.settings.hotkey))main.webContents.once('did-finish-load',()=>send(main,{type:'error',error:'Shortcut unavailable. Choose another shortcut in Settings.'}));
+  startDragListener();
   if(smoke){
     await Promise.all([main.webContents.isLoading()?new Promise(r=>main.webContents.once('did-finish-load',r)):null,overlay.webContents.isLoading()?new Promise(r=>overlay.webContents.once('did-finish-load',r)):null]);
     const checks=await main.webContents.executeJavaScript(`(async()=>({title:document.title,bridge:typeof window.lens.state,settings:!!(await window.lens.state()).settings,heading:document.querySelector('h1')?.textContent}))()`);
