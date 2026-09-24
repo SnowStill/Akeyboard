@@ -1,7 +1,9 @@
 # Lens Translate
 
-Windows desktop screen translator built with Electron, Tesseract.js, and the OpenAI Responses API.
 
+
+Tired of switching windows mid-game to translate? This is a Windows desktop screen translator built with Electron, Tesseract.js, and the OpenAI Responses API,
+ which lets you capture text on your screen and see the translation right beside it—so you can follow the dialogue, understand the quest, and stay in the game. 
 ## Run
 
 Requires Node.js 22 or later and Windows 10/11.
