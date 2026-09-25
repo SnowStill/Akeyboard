@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const LANGUAGES = ['English','Spanish','French','German','Italian','Portuguese','Japanese','Korean','Chinese (Simplified)','Chinese (Traditional)','Arabic','Hindi','Russian','Ukrainian','Vietnamese','Thai','Turkish','Indonesian'];
-const OCR = { English:'eng', Spanish:'spa', French:'fra', German:'deu', Italian:'ita', Portuguese:'por', Japanese:'jpn+eng', Korean:'kor+eng', 'Chinese (Simplified)':'chi_sim+eng', 'Chinese (Traditional)':'chi_tra+eng', Arabic:'ara+eng', Hindi:'hin+eng', Russian:'rus+eng', Ukrainian:'ukr+eng', Vietnamese:'vie+eng', Thai:'tha+eng', Turkish:'tur+eng', Indonesian:'ind+eng' };
+const OCR = { English:'eng', Spanish:'spa', French:'fra', German:'deu', Italian:'ita', Portuguese:'por', Japanese:'jpn+eng', Korean:'kor+eng', 'Chinese (Simplified)':'chi_sim', 'Chinese (Traditional)':'chi_tra', Arabic:'ara+eng', Hindi:'hin+eng', Russian:'rus+eng', Ukrainian:'ukr+eng', Vietnamese:'vie+eng', Thai:'tha+eng', Turkish:'tur+eng', Indonesian:'ind+eng' };
 const defaults = { target:'English', source:'English', model:'gpt-4.1-mini', hotkey:'Alt+Shift+T', gestureCapture:true, context:true, history:true, glossary:'', blockedApps:'' };
 function validateSettings(input) {
   if (!input || !LANGUAGES.includes(input.target) || !OCR[input.source]) throw new Error('Choose supported source and target languages.');
@@ -23,6 +23,21 @@ function contextFor(history, app, settings) {
 function cacheKey(text, settings, context, app) {
   return crypto.createHash('sha256').update(JSON.stringify([text,settings.source,settings.target,settings.model,settings.glossary,context,settings.context ? app : null])).digest('hex');
 }
+function cleanOcrText(text) {
+  return text.replace(/\r\n?/g,'\n')
+    .split('\n')
+    .map(line=>line
+      // Remove standalone runs of visual noise, without changing URLs or code.
+      .replace(/(^|\s)[|¦_~^`\\\u2500-\u259f]{2,}(?=\s|$)/gu,'$1')
+      .trim())
+    .filter(line=>{
+      // Keep numbers and non-Latin characters, which may be complete words.
+      if (/^[\p{P}\p{S}\s]+$/u.test(line)) return false;
+      if (/^\p{Script=Latin}\p{M}*$/u.test(line) && !/^[aAI]$/.test(line)) return false;
+      return true;
+    })
+    .join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
 function pickText(data, point) {
   if (!point) return data.text.trim();
   const blocks = data.blocks || [];
@@ -33,4 +48,4 @@ function pickText(data, point) {
   if (!nearest || distance(nearest.bbox)>160) throw new Error('No text near that point. Drag a rectangle around the text instead.');
   return (nearest.text || (nearest.lines || []).map(l=>l.text).join('\n')).trim();
 }
-module.exports = {LANGUAGES,OCR,defaults,validateSettings,cropRect,contextFor,cacheKey,pickText};
+module.exports = {LANGUAGES,OCR,defaults,validateSettings,cropRect,contextFor,cacheKey,pickText,cleanOcrText};

@@ -2,10 +2,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
-const sharp = require('sharp');
-const { createWorker, PSM } = require('tesseract.js');
+const { createWorker } = require('tesseract.js');
 const OpenAI = require('openai');
-const { OCR,defaults,contextFor,cacheKey,pickText } = require('./core.cjs');
+const { OCR,defaults,contextFor,cacheKey } = require('./core.cjs');
+const { recognizeOcr } = require('./ocr.cjs');
 const unpacked = file => file.replace(/app\.asar([\\/])/, 'app.asar.unpacked$1');
 class Store {
   constructor(dir, safeStorage) {
@@ -35,14 +35,7 @@ class Translator {
       this.worker=await createWorker(lang,1,{cachePath:this.store.dir,workerPath:unpacked(require.resolve('tesseract.js/src/worker-script/node/index.js'))}); this.language=lang;
     }
     progress('Reading the selected text…');
-    const meta=await sharp(buffer).metadata();
-    const scale=meta.width<1400 ? 2 : 1;
-    const processed=await sharp(buffer).resize({width:meta.width*scale,kernel:'lanczos3'}).grayscale().normalize().sharpen({sigma:1.2,m1:1,m2:2}).linear(1.35,-28).png().toBuffer();
-    await this.worker.setParameters({tessedit_pageseg_mode:PSM.SPARSE_TEXT,preserve_interword_spaces:'1'});
-    const {data}=await this.worker.recognize(processed,{}, {text:true,blocks:true});
-    const text=pickText(data,point ? {x:point.x*scale,y:point.y*scale}:null);
-    if (!text) throw new Error('No text was detected. Try a larger region or change the OCR language.');
-    return {text,confidence:data.confidence};
+    return recognizeOcr(this.worker,buffer,point,progress);
   }
   async translate(text, app, signal) {
     const s={...this.store.settings};

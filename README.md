@@ -51,6 +51,7 @@ npm run dist
 - `src/main.cjs`: secure IPC, capture lifecycle, global shortcut, tray, selection/result windows, cancellation.
 - `src/services.cjs`: local state, secure key storage, foreground context, worker-backed OCR, translation and cache.
 - `src/core.cjs`: validated settings, coordinate conversion, context filtering, paragraph selection.
+- `src/ocr.cjs`: image enlargement, dark-background inversion, capture padding, and a bounded low-confidence retry. Chinese selections use dedicated Simplified or Traditional recognition models. A retry adds latency and confidence scores do not guarantee accuracy.
 - `src/preload.cjs`: narrow renderer bridge; renderer has no Node or network access.
 - `src/ui/`: local HTML/CSS/JS interface with strict content security policy.
 - `tests/`: coordinate, context-isolation, cache and input-validation tests.
